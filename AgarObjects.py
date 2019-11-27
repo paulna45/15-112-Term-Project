@@ -17,6 +17,7 @@ class Agar(object):
         self.g = random.randint(0,255)
         self.b = random.randint(0,255)
         self.color = rgbString(self.r, self.g, self.b)
+        self.isEaten = False
     
     def __hash__(self):
         return hash(self.getHashables())
@@ -34,8 +35,7 @@ class Agar(object):
 
     def eatAgar(self, other):
         self.radius += other.radius
-        if isinstance(other, Enemy):
-            self.mode.enemies.remove(other)
+        other.isEaten = False
 
 class Player(Agar):
     def __init__(self, mode, cx, cy):

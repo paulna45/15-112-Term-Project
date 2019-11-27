@@ -38,10 +38,13 @@ class GameMode(Mode):
         if mode.timeInt % mode.spawnTimeInterval == 0:
             mode.createEnemy()
         mode.player.move()
+        deadEnemies = []
         for enemy in mode.enemies:
             if mode.player.checkIfCanEat(enemy):
                 mode.player.eatAgar(enemy)
-            
+                deadEnemies.append(enemy)
+        for enemy in deadEnemies:
+            mode.enemies.remove(enemy)
         mode.timeInt += 1
 
         #for enemy in mode.enemies:
