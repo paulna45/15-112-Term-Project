@@ -18,6 +18,7 @@ class GelioGame(ModalApp):
         app.splashScreenMode = SplashScreenMode()
         app.gameMode = GameMode()
         app.helpMode = HelpMode()
+        app.gameOverMode = GameOverMode()
         app.setActiveMode(app.splashScreenMode)
 
         
@@ -50,14 +51,22 @@ class GameMode(Mode):
     def createEnemy(mode):
         cx = random.randint(15, 1000)
         cy = random.randint(15, 1000)
+        while ((cx + mode.player.radius*1.2) <= mode.player.cx + mode.player.radius) and \
+              ((cx + mode.player.radius*1.2) >= mode.player.cx - mode.player.radius) and \
+              ((cy + mode.player.radius*1.2) <= mode.player.cy + mode.player.radius) and \
+              ((cy + mode.player.radius*1.2) >= mode.player.cy - mode.player.radius):
+            cx = random.randint(15, 1000)
+            cy = random.randint(15, 1000)
         lo = roundHalfUp(mode.player.radius * 0.8)
         hi = roundHalfUp(mode.player.radius * 1.2)
         r = random.randint(lo, hi)
-        x = random.randint(0,1)
+        x = random.randint(0,2)
         if x == 0:
             enemy = AggressiveEnemy(mode, cx, cy, r)
         elif x == 1:
             enemy = TimidEnemy(mode, cx, cy, r)
+        elif x == 2:
+            enemy = PassiveEnemy(mode, cx, cy, r)
         mode.enemies.add(enemy)
         mode.allObjects.add(enemy)
 
@@ -66,6 +75,8 @@ class GameMode(Mode):
             mode.createEnemy()
         mode.scrollXRate = mode.player.dx
         mode.scrollYRate = mode.player.dy
+
+        # smooth change of radii
 
         #update cx & cy for all non-Player objects, for sidescrolling
         for thing in mode.allObjects:
@@ -98,7 +109,7 @@ class GameMode(Mode):
                         other.eatAgar(enemy)
                         deadEnemies.add(enemy)
 
-        for enemy in mode.enemies: #keeps track of dead enemies
+        for enemy in mode.enemies:
             if mode.player.checkIfCanEat(enemy):
                 mode.player.eatAgar(enemy)
                 deadEnemies.add(enemy)
@@ -106,8 +117,10 @@ class GameMode(Mode):
             mode.enemies.remove(enemy)
         mode.timeInt += 1
 
-        #for enemy in mode.enemies:
-        #    enemy.move()
+        #checks if player is eaten
+        for enemy in mode.enemies:
+            if enemy.checkIfCanEat(mode.player):
+                mode.app.setActiveMode(mode.app.gameOverMode)
 
     def keyPressed(mode, event):
         if event.key in ['Left', 'A']:
@@ -118,6 +131,8 @@ class GameMode(Mode):
             mode.player.dx += 1
         elif event.key in ['Down', 'S']:
             mode.player.dy += 1
+        speed = math.sqrt(mode.player.dx ** 2 + mode.player.dy ** 2)
+
     
     def mouseMoved(mode, event):
         x, y = event.x, event.y
@@ -134,7 +149,8 @@ class GameMode(Mode):
                                mode.rightBound, y + mode.upperBound%1)
 
     def drawScore(mode, canvas):
-        canvas.create_text(mode.width, mode.height, text=f'Score: {mode.app.score}')
+        canvas.create_text(0, mode.height, 
+                           text=f'Score: {mode.app.score}', anchor='sw')
 
     def redrawAll(mode, canvas):
         mode.drawGrid(canvas)
@@ -159,7 +175,8 @@ class SplashScreenMode(Mode):
                                mode.rightBound, y, fill='Grey')
 
     def drawLogo(mode, canvas):
-        canvas.create_text(mode.width/2, mode.height/4, text='GEL.io', font=('Comic Sans MS', 80, 'bold'))
+        canvas.create_text(mode.width/2, mode.height/4, text='GEL.io', 
+                           font=('Comic Sans MS', 80, 'bold'))
 
     def drawStartButton(mode, canvas):
         canvas.create_rectangle(mode.width/4, mode.height/2 + 10, 
@@ -190,6 +207,41 @@ class SplashScreenMode(Mode):
 class HelpMode(Mode):
     def mousePressed(mode, event):
         mode.app.setActiveMode(mode.app.gameMode)
+
+class GameOverMode(Mode):
+    def appStarted(mode):
+        mode.leftBound = 0
+        mode.rightBound = int(mode.width)
+        mode.upperBound = 0
+        mode.lowerBound = int(mode.height)
+
+    def drawGrid(mode, canvas):
+        for x in range(mode.leftBound, mode.rightBound + 1, 30):
+            canvas.create_line(x, mode.upperBound, 
+                               x, mode.lowerBound, fill='Grey')
+        for y in range(mode.upperBound, mode.lowerBound + 1, 30):
+            canvas.create_line(mode.leftBound, y, 
+                               mode.rightBound, y, fill='Grey')
+
+    def drawStartButton(mode, canvas):
+        canvas.create_rectangle(mode.width/4, mode.height*3/8 + 10, 
+                                mode.width*3/4, mode.height*5/8 - 10, 
+                                fill='Green', activefill='Yellow')
+        canvas.create_text(mode.width/2, mode.height/2, text='Play Again?', font='Arial 40 bold')
+
+    def showScore(mode, canvas):
+        canvas.create_text(mode.width/2, mode.height/8, text='Your Score:',
+                           font='Arial 30')
+        canvas.create_text(mode.width/2, mode.height/4, text=f'{mode.app.score}',
+                           font=('Comic Sans MS', 50, 'bold'))
+
+    def mousePressed(mode, event):
+        mode.app.setActiveMode(mode.app.gameMode)
+
+    def redrawAll(mode, canvas):
+        mode.drawGrid(canvas)
+        mode.showScore(canvas)
+        mode.drawStartButton(canvas)
 
 def main():
     GelioGame(width=960,height=600)

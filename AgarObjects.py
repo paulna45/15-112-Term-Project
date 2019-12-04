@@ -37,21 +37,17 @@ class Agar(object):
         if self.cx - self.radius < self.mode.leftBound:
             self.cx = self.mode.leftBound + self.radius
             self.dx = 0
-            print('boop')
         elif self.cx + self.radius > self.mode.rightBound:
             self.cx = self.mode.rightBound - self.radius
             self.dx = 0
-            print('bop')
         
         self.cy += self.dy
         if self.cy - self.radius < self.mode.upperBound:
             self.cy = self.mode.upperBound + self.radius
             self.dy = 0
-            print('blip')
         elif self.cy + self.radius > self.mode.lowerBound:
             self.cy = self.mode.lowerBound - self.radius
             self.dy = 0
-            print('beep')
     
     def checkIfCanEat(self, other):
         if (other.radius < self.radius) and \
