@@ -73,7 +73,6 @@ class GameMode(Mode):
             cy = random.randint(15 - mode.scrollY, 1000 - mode.scrollY)
         lo = (roundHalfUp(mode.player.radius * 0.8))
         hi = (roundHalfUp(mode.player.radius * 1.2))
-        print(lo, hi)
         try:
             r = random.randint(lo, hi)
         except: pass
@@ -163,6 +162,14 @@ class GameMode(Mode):
             mode.foods.remove(food)
         mode.timeInt += 1
 
+        if mode.player.cy > mode.lowerBound - mode.scrollY:
+            mode.player.cx = mode.lowerBound - mode.scrollY - mode.player.radius
+        if mode.player.cx > mode.rightBound - mode.scrollX:
+            mode.player.cx = mode.rightBound - mode.scrollX - mode.player.radius
+        if mode.player.cy < mode.upperBound - mode.scrollY:
+            mode.player.cx = mode.lowerBound - mode.scrollY + mode.player.radius
+        if mode.player.cx < mode.leftBound - mode.scrollX:
+            mode.player.cx = mode.rightBound - mode.scrollX + mode.player.radius
         #checks if player is eaten
         for enemy in mode.enemies:
             if enemy.checkIfCanEat(mode.player):
@@ -261,6 +268,11 @@ class SplashScreenMode(Mode):
         mode.drawHelpButton(canvas)
 
 class HelpMode(Mode):
+    def redrawAll(mode, canvas):
+        canvas.create_text(mode.width//2, mode.height//2, 
+                            text='move the mouse cursor to play!',
+                            font='Arial 30 bold')
+
     def mousePressed(mode, event):
         mode.app.setActiveMode(mode.app.gameMode)
 
