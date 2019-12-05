@@ -1,3 +1,5 @@
+# The main executable file.
+
 # cmu_112_graphics retrieved from http://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
 from cmu_112_graphics import *
 from tkinter import *
@@ -53,24 +55,28 @@ class GameMode(Mode):
             mode.createEnemy()
 
     def createFood(mode):
-        cx = random.randint(-1435, -435)
-        cy = random.randint(-895, 1495)
+        cx = random.randint(-1435 - roundHalfUp(mode.scrollX), -435 - roundHalfUp(mode.scrollX))
+        cy = random.randint(-895 - roundHalfUp(mode.scrollY), 1495 - roundHalfUp(mode.scrollY))
         food = Food(mode, cx, cy)
         mode.allObjects.add(food)
         mode.foods.add(food)
+        
 
     def createEnemy(mode):
-        cx = random.randint(15, 1000)
-        cy = random.randint(15, 1000)
+        cx = random.randint(15 - roundHalfUp(mode.scrollX), 1000 - roundHalfUp(mode.scrollX))
+        cy = random.randint(15 - roundHalfUp(mode.scrollY), 1000 - roundHalfUp(mode.scrollY))
         while ((cx + mode.player.radius*1.2) <= mode.player.cx + mode.player.radius) and \
               ((cx + mode.player.radius*1.2) >= mode.player.cx - mode.player.radius) and \
               ((cy + mode.player.radius*1.2) <= mode.player.cy + mode.player.radius) and \
               ((cy + mode.player.radius*1.2) >= mode.player.cy - mode.player.radius):
-            cx = random.randint(15, 1000)
-            cy = random.randint(15, 1000)
-        lo = roundHalfUp(mode.player.radius * 0.8)
-        hi = roundHalfUp(mode.player.radius * 1.2)
-        r = random.randint(lo, hi)
+            cx = random.randint(15 - mode.scrollX, 1000 - mode.scrollX)
+            cy = random.randint(15 - mode.scrollY, 1000 - mode.scrollY)
+        lo = (roundHalfUp(mode.player.radius * 0.8))
+        hi = (roundHalfUp(mode.player.radius * 1.2))
+        print(lo, hi)
+        try:
+            r = random.randint(lo, hi)
+        except: pass
         x = random.randint(0,2)
         if x == 0:
             enemy = AggressiveEnemy(mode, cx, cy, r)
@@ -118,10 +124,10 @@ class GameMode(Mode):
         mode.leftBound = mode.leftBorder - mode.scrollX
         mode.rightBound = mode.rightBorder - mode.scrollX
         mode.upperBound = mode.upperBorder - mode.scrollY
-        mode.lowerBound = mode.lowerBorder - mode.scrollY
+        mode.lowerBound = mode.lowerBorder - mode.scrollY      
 
         deadEnemies = set() # keeps track of dead enemies
-        deadFood = set() #keeps track of dead food
+        deadFood = set() #keeps track of 'dead' food
         # changes movement of enemies
         for enemy in mode.enemies:
             enemy.changeDir()
@@ -171,14 +177,15 @@ class GameMode(Mode):
             mode.player.dx += 1
         elif event.key in ['Down', 'S']:
             mode.player.dy += 1
-        speed = math.sqrt(mode.player.dx ** 2 + mode.player.dy ** 2)
-
+        
     
     def mouseMoved(mode, event):
         x, y = event.x, event.y
         d = math.sqrt((mode.cx + x) ** 2 + (mode.cy + y) ** 2)
-        mode.player.dx = (x - mode.cx) / (mode.width / 4)
-        mode.player.dy = (y - mode.cy) / (mode.height / 4)
+        scale = 1
+
+        mode.player.dx = (x - mode.cx) * scale / (mode.width / 9)
+        mode.player.dy = (y - mode.cy) * scale / (mode.height / 9)
 
     def drawGrid(mode, canvas):
         for x in range(math.floor(mode.leftBound), math.ceil(mode.rightBound) + 1, 30):

@@ -1,3 +1,6 @@
+# Contains all information about the objects 
+# (the Player, the Enemy types, and the Food)
+
 from tkinter import *
 from PIL import Image, ImageTk
 import random, math, decimal
@@ -59,14 +62,14 @@ class Agar(object):
             return True
         else: return False
 
-    def eatAgar(self, other):
-        self.radiusQueue += roundHalfUp(math.sqrt(other.radius))
+    
 
 # non-moving objects
 class Food(Agar):
-    def __init__(self, mode, cx, cy, ):
+    def __init__(self, mode, cx, cy):
         super().__init__(mode, cx, cy)
         self.radius = random.randint(2, 5)
+        self.area = math.pi * (self.radius ** 2)
         self.color = rgbString(self.r, self.g, self.b)
 
     def getHashables(self):
@@ -77,31 +80,43 @@ class Food(Agar):
                            self.cy - self.radius, 
                            self.cx + self.radius, 
                            self.cy + self.radius, 
-                           fill=self.color, outline='Yellow')
+                           fill=self.color, outline='Brown')
 
 class Player(Agar):
     def __init__(self, mode, cx, cy):
         super().__init__(mode, cx, cy)
         self.radius = 10
+        self.area = math.pi * (self.radius ** 2)
+        self.maxSpeed = (self.area**-1.5) * 10
         self.color = rgbString(255,0,0)
         self.score = self.mode.app.score
     
     def getHashables(self):
         return (self.name,)
     
+    def updateArea(self):
+        self.area = math.pi * (self.radius ** 2)
+        self.mass = self.area / 90
+        self.maxSpeed = (self.mass ** -2.5) * 10
+
+
+
     def draw(self, canvas):
         canvas.create_oval(self.cx - self.radius, self.cy - self.radius, 
                            self.cx + self.radius, self.cy + self.radius, fill=self.color)
     
     def eatAgar(self, other):
-        self.radiusQueue += roundHalfUp(math.sqrt(other.radius))
+        newRadius = math.sqrt((self.area + other.area) / math.pi)
+        self.radiusQueue += roundHalfUp(newRadius - self.radius)
         self.mode.app.score += other.radius
         self.score = self.mode.app.score
+        self.updateArea()
 
 class Enemy(Agar):
     def __init__(self, mode, cx, cy, radius):
         super().__init__(mode, cx, cy)
         self.radius = radius
+        self.updateArea()
     
     def getHashables(self):
         return (self.r, self.g, self.b)
@@ -110,11 +125,27 @@ class Enemy(Agar):
         canvas.create_oval(self.cx - self.radius, self.cy - self.radius, 
                            self.cx + self.radius, self.cy + self.radius, fill=self.color)
 
+    def updateArea(self):
+        self.area = math.pi * (self.radius ** 2)
+        self.mass = self.area / 900
+        self.maxSpeed = (self.mass*-1.5) * 10
+
+    # def scaleSpeed(self):
+    #     if self.dx != 0 and self.dy != 0:
+    #         speed = math.sqrt(self.dx ** 2 + self.dy ** 2)
+    #         scale = self.maxSpeed / speed
+    #         self.dx *= scale
+    #         self.dy *= scale
+            
+
     def changeDir(self):
         self.dx = random.randrange(-1,1)
         self.dy = random.randrange(-1,1)
 
-    #def move(self):
+    def eatAgar(self, other):
+        newRadius = math.sqrt((self.area + other.area) / math.pi)
+        self.radiusQueue += roundHalfUp(newRadius - self.radius)
+        self.updateArea()
         
 
 class AggressiveEnemy(Enemy):
@@ -130,11 +161,12 @@ class AggressiveEnemy(Enemy):
             closestSmallerEnemy = None
             closestSmallerEnemyDistance = ''
             for enemy in self.mode.enemies:
-                if self.radius <= enemy.radius:
-                    continue #checks for larger enemies and if self == enemy
                 distance = math.sqrt((self.cx + enemy.cx)**2 + (self.cy + enemy.cy)**2)
-                #print(distance)
-                if closestSmallerEnemyDistance == '':
+                if distance > 800: 
+                    continue
+                elif self.radius <= enemy.radius:
+                    continue #checks for larger enemies and if self == enemy
+                elif closestSmallerEnemyDistance == '':
                     closestSmallerEnemyDistance = distance
                     closestSmallerEnemy = enemy
                 elif distance < closestSmallerEnemyDistance:
@@ -147,6 +179,7 @@ class AggressiveEnemy(Enemy):
             else:
                 self.dx = (closestSmallerEnemy.cx - self.cx) / (self.mode.width / 4)
                 self.dy = (closestSmallerEnemy.cy - self.cy) / (self.mode.height / 4)
+        #self.scaleSpeed()
 
 class TimidEnemy(Enemy):
     def __init__(self, mode, cx, cy, radius):
@@ -161,9 +194,11 @@ class TimidEnemy(Enemy):
             closestLargerEnemy = None
             closestLargerEnemyDistance = ''
             for enemy in self.mode.enemies:
+                distance = math.sqrt((self.cx + enemy.cx)**2 + (self.cy + enemy.cy)**2)
+                if distance > 800:
+                    continue
                 if self.radius >= enemy.radius:
                     continue # skips if other enemy is smaller or same size (includes self)
-                distance = math.sqrt((self.cx + enemy.cx)**2 + (self.cy + enemy.cy)**2)
                 #print(distance)
                 if closestLargerEnemyDistance == '':
                     closestLargerEnemyDistance = distance
@@ -178,6 +213,7 @@ class TimidEnemy(Enemy):
             else:
                 self.dx = (self.cx - closestLargerEnemy.cx) / (self.mode.width / 4)
                 self.dy = (self.cy - closestLargerEnemy.cy) / (self.mode.height / 4)
+        #self.scaleSpeed()
 
 class PassiveEnemy(Enemy):
     def __init__(self, mode, cx, cy, radius):
@@ -189,23 +225,36 @@ class PassiveEnemy(Enemy):
             self.dx = (self.cx - self.mode.player.cx) / (self.mode.width / 4)
             self.dy = (self.cy - self.mode.player.cy) / (self.mode.height / 4)
         else:
-            closestLargerEnemy = None
-            closestLargerEnemyDistance = ''
+            closestSmallerEnemy = None
+            closestSmallerEnemyDistance = ''
             for enemy in self.mode.enemies:
-                if self.radius >= enemy.radius:
-                    continue #checks for smaller enemies and if self == enemy
                 distance = math.sqrt((self.cx + enemy.cx)**2 + (self.cy + enemy.cy)**2)
+                if distance > 300: 
+                    continue
+                if self.radius <= enemy.radius:
+                    continue #checks for larger enemies and if self == enemy
+                
                 #print(distance)
-                if closestLargerEnemyDistance == '':
-                    closestLargerEnemyDistance = distance
-                    closestLargerEnemy = enemy
-                elif distance < closestLargerEnemyDistance:
-                    closestLargerEnemyDistance = distance
-                    closestLargerEnemy = enemy
-            #print(closestSmallerEnemy, closestSmallerEnemyDistance)
-            if closestLargerEnemy == None:
-                self.dx = 0
-                self.dy = 0
+                elif closestSmallerEnemyDistance == '':
+                    closestSmallerEnemyDistance = distance
+                    closestSmallerEnemy = enemy
+                elif distance < closestSmallerEnemyDistance:
+                    closestSmallerEnemyDistance = distance
+                    closestSmallerEnemy = enemy
+            
+            if closestSmallerEnemy == None:
+                closestFood = None
+                closestFoodDistance = ''
+                for food in self.mode.foods:
+                    if closestFoodDistance == '':
+                        closestFoodDistance = distance
+                        closestFood = food
+                    elif distance < closestFoodDistance:
+                        closestFoodDistance = distance
+                        closestFood = food
+                self.dx = (closestFood.cx - self.cx) / (self.mode.width / 4)
+                self.dy = (closestFood.cy - self.cy) / (self.mode.height / 4)
             else:
-                self.dx = (self.cx - closestLargerEnemy.cx) / (self.mode.width / 4)
-                self.dy = (self.cy - closestLargerEnemy.cy) / (self.mode.height / 4)
+                self.dx = (closestSmallerEnemy.cx - self.cx) / (self.mode.width / 4)
+                self.dy = (closestSmallerEnemy.cy - self.cy) / (self.mode.height / 4)
+        #self.scaleSpeed()
